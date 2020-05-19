@@ -67,6 +67,17 @@ app.post("/createPost", (request, response) => {
         });
 });
 
+// Some helper funtions...
+const isEmpty = (string) => {
+    return string.trim() === "";
+};
+
+const isEmail = (email) => {
+    const regEx = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+
+    return email.match(regEx);
+};
+
 // User signup route
 app.post("/signup", (request, response) => {
     const newUser = {
@@ -76,7 +87,31 @@ app.post("/signup", (request, response) => {
         username: request.body.username,
     };
 
+    let errors = {};
+
     // TODO: validate data here...
+    if (isEmpty(newUser.email)) {
+        errors.email = "email cannot be empty";
+    } else if (!isEmail(newUser.email)) {
+        errors.email = "invalid email address";
+    }
+
+    if (isEmpty(newUser.password)) {
+        errors.password = "password cannot be empty";
+    }
+
+    if (newUser.password !== newUser.confirmPassword) {
+        errors.confirmPassword = "passwords must match";
+    }
+
+    if (isEmpty(newUser.username)) {
+        errors.username = "username cannot be empty";
+    }
+
+    // We now only proceed when the errors object above is empty
+    if (Object.keys(errors).length > 0) {
+        return response.status(400).json(errors);
+    }
 
     // Note:
     // We need the email and username to be unique in this application
@@ -132,6 +167,67 @@ app.post("/signup", (request, response) => {
             if (err.code === "auth/email-already-in-use") {
                 return response.status(400).json({
                     email: "this email is already in use",
+                });
+            }
+
+            if (err.code === "auth/weak-password") {
+                return response.status(400).json({
+                    password: "weak password combination",
+                });
+            }
+
+            return response.status(500).json({
+                error: err.code,
+            });
+        });
+});
+
+// Login route
+app.post("/login", (request, response) => {
+    const user = {
+        email: request.body.email,
+        password: request.body.password,
+    };
+
+    let errors = {};
+
+    // validating user
+
+    if (isEmpty(user.email)) {
+        errors.email = "email cannot be empty";
+    } else if (!isEmail(user.email)) {
+        errors.email = "invalid email address";
+    }
+
+    if (isEmpty(user.password)) {
+        errors.password = "password cannot be empty";
+    }
+
+    if (Object.keys(errors).length > 0) {
+        return response.status(400).json(errors);
+    }
+
+    // Here means we have valid user inputs
+    // Now we can login the user
+
+    firebase
+        .auth()
+        .signInWithEmailAndPassword(user.email, user.password)
+        .then((data) => {
+            return data.user.getIdToken();
+        })
+        .then((token) => {
+            return response.status(200).json({
+                token,
+            });
+        })
+        .catch((err) => {
+            console.error(err);
+
+            // wrong possword
+            if (err.code === "auth/wrong-password") {
+                return response.status(403).json({
+                    general: "invalid username/password, try again...",
                 });
             }
 
