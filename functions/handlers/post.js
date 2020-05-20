@@ -161,6 +161,10 @@ exports.likePost = (request, response) => {
                 // now we try to get the like for this post by this particular user
                 // and check if it exists
                 return likeDocument.get();
+            } else {
+                return response.status(404).json({
+                    error: "post not found",
+                });
             }
         })
         .then((data) => {
@@ -223,6 +227,10 @@ exports.unlikePost = (request, response) => {
                 // now we try to get the like for this post by this particular user
                 // and check if it exists
                 return likeDocument.get();
+            } else {
+                return response.status(404).json({
+                    error: "post not found",
+                });
             }
         })
         .then((data) => {

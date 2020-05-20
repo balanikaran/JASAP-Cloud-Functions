@@ -1,5 +1,7 @@
 const functions = require("firebase-functions");
 
+const { db } = require("./util/firebaseAdmin");
+
 // creating express app here...
 const express = require("express");
 const app = express();
@@ -52,3 +54,95 @@ app.post("/user", firebaseAuthMiddleware, addUserDetails);
 app.get("/user", firebaseAuthMiddleware, getAuthenticatedUserData);
 
 exports.api = functions.https.onRequest(app);
+
+exports.createNotificationOnLike = functions.firestore
+    .document("likes/{id}")
+    .onCreate((snapshot) => {
+        // getting the post for which notification has to be generated
+        db.doc(`/posts/${snapshot.data().postId}`)
+            .get()
+            .then((doc) => {
+                // check if the post really exists
+                if (doc.exists) {
+                    // we can now create a new notification
+                    const likeNotification = {
+                        createdAt: new Date().toISOString(),
+                        recipient: doc.data().username,
+                        sender: snapshot.data().username,
+                        type: "like",
+                        read: false,
+                        postId: doc.id,
+                    };
+
+                    // add this new likeNotification to the database
+                    // NOTE: here we are adding a new notification
+                    // with the same id as of like document
+                    return db
+                        .doc(`/notifications/${snapshot.id}`)
+                        .set(likeNotification);
+                } else {
+                    return;
+                }
+            })
+            .then(() => {
+                // we don't need to send back anything because this is a database trigger
+                return;
+            })
+            .catch((err) => {
+                console.error(err);
+                return;
+            });
+    });
+
+exports.createNotificationOnComment = functions.firestore
+    .document("comments/{id}")
+    .onCreate((snapshot) => {
+        // getting the post for which notification has to be generated
+        db.doc(`/posts/${snapshot.data().postId}`)
+            .get()
+            .then((doc) => {
+                // check if the post really exists
+                if (doc.exists) {
+                    // we can now create a new notification
+                    const commentNotification = {
+                        createdAt: new Date().toISOString(),
+                        recipient: doc.data().username,
+                        sender: snapshot.data().username,
+                        type: "comment",
+                        read: false,
+                        postId: doc.id,
+                    };
+
+                    // add this new commentNotification to the database
+                    // NOTE: here we are adding a new notification
+                    // with the same id as of comment document
+                    return db
+                        .doc(`/notifications/${snapshot.id}`)
+                        .set(commentNotification);
+                } else {
+                    return;
+                }
+            })
+            .then(() => {
+                // we don't need to send back anything because this is a database trigger
+                return;
+            })
+            .catch((err) => {
+                console.error(err);
+                return;
+            });
+    });
+
+exports.deleteNotificationOnUnlike = functions.firestore
+    .document("likes/{id}")
+    .onDelete((snapshot) => {
+        db.doc(`/notifications/${snapshot.id}`)
+            .delete()
+            .then(() => {
+                return;
+            })
+            .catch((err) => {
+                console.error(err);
+                return;
+            });
+    });

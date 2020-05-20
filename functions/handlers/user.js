@@ -279,6 +279,10 @@ exports.getAuthenticatedUserData = (request, response) => {
                     .collection("likes")
                     .where("username", "==", request.user.username)
                     .get();
+            } else {
+                return response.status(404).json({
+                    error: "user not found",
+                });
             }
         })
         .then((data) => {

@@ -4,6 +4,7 @@ const isEmpty = (string) => {
 };
 
 const isEmail = (email) => {
+    //eslint-disable-next-line
     const regEx = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
 
     return email.match(regEx);
@@ -64,7 +65,7 @@ const reduceUserDetails = (data) => {
     }
 
     if (!isEmpty(data.website.trim())) {
-        // if the user has not added https or http 
+        // if the user has not added https or http
         // we will be adding http only
         // bacause http can redirect to https but not vice versa
         if (data.website.trim().substring(0, 4) !== "http") {

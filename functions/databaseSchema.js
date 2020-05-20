@@ -30,4 +30,20 @@ let db = {
             createdAt: "2020-05-19T20:38:34.523Z",
         },
     ],
+    likes: [
+        {
+            postId: "for which post the like is",
+            username: "by whom - username",
+        },
+    ],
+    notifications: [
+        {
+            recipient: "user",
+            sender: "john",
+            read: true | false,
+            postId: "7b13h21hg12hj",
+            type: like | comment,
+            createdAt: "2020-05-19T20:38:34.523Z",
+        },
+    ],
 };
