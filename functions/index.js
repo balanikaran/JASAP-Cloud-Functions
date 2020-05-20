@@ -4,7 +4,15 @@ const functions = require("firebase-functions");
 const express = require("express");
 const app = express();
 
-const { getPosts, createPost, getPost } = require("./handlers/post");
+const {
+    getPosts,
+    createPost,
+    getPost,
+    addComment,
+    likePost,
+    unlikePost,
+    deletePost,
+} = require("./handlers/post");
 const {
     signup,
     login,
@@ -22,11 +30,14 @@ app.get("/posts", getPosts);
 app.post("/post", firebaseAuthMiddleware, createPost);
 // get post with comments using postId
 app.get("/post/:postId", getPost);
-// TODO: comment on a post
-
-// TODO: delete a post
-// TODO: like a post
-// TODO: unline a post
+// comment on a post
+app.post("/post/:postId/comment", firebaseAuthMiddleware, addComment);
+// like a post
+app.get("/post/:postId/like", firebaseAuthMiddleware, likePost);
+// unlike a post
+app.get("/post/:postId/unlike", firebaseAuthMiddleware, unlikePost);
+// delete a post using postId
+app.delete("/post/:postId", firebaseAuthMiddleware, deletePost);
 
 // -------------------- Routes for User Operations --------------------
 // User signup route

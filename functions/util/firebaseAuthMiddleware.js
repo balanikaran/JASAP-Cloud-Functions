@@ -31,6 +31,7 @@ const firebaseAuthMiddleware = (request, response, next) => {
         })
         .then((data) => {
             request.user.username = data.docs[0].data().username;
+            request.user.imageUrl = data.docs[0].data().imageUrl;
             // next is called here means token is valid
             // we can proceed for whatever task we sent the request for
             return next();
