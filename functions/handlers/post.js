@@ -1,5 +1,6 @@
 const { db } = require("../util/firebaseAdmin");
 
+// handler for creating a new post
 exports.createPost = (request, response) => {
     // request now has a user property
     // this is added via middleware
@@ -9,7 +10,7 @@ exports.createPost = (request, response) => {
         body: request.body.body,
         createdAt: new Date().toISOString(),
     };
-    
+
     db.collection("posts")
         .add(newPost)
         .then((doc) => {
@@ -25,6 +26,7 @@ exports.createPost = (request, response) => {
         });
 };
 
+// handler for getting all the posts
 exports.getPosts = (request, response) => {
     db.collection("posts")
         .orderBy("createdAt", "desc")
@@ -41,5 +43,46 @@ exports.getPosts = (request, response) => {
         })
         .catch((err) => {
             console.error(err);
+        });
+};
+
+// handler to get post with commentn using post id
+exports.getPost = (request, response) => {
+    let postData = {};
+
+    db.doc(`/posts/${request.params.postId}`)
+        .get()
+        .then((doc) => {
+            if (!doc.exists) {
+                return response.status(404).json({
+                    error: "post not found",
+                });
+            }
+
+            // doc exists
+            // add post data to postData object
+            postData = doc.data();
+            postData.postId = doc.id;
+
+            // now here we can get the comments of the post
+            return db
+                .collection("comments")
+                .orderBy("createdAt", "desc")
+                .where("postId", "==", request.params.postId)
+                .get();
+        })
+        .then((data) => {
+            postData.comments = [];
+            data.forEach((doc) => {
+                postData.comments.push(doc.data());
+            });
+
+            return response.json(postData);
+        })
+        .catch((err) => {
+            console.error(err);
+            return response.status(500).json({
+                error: err.code,
+            });
         });
 };

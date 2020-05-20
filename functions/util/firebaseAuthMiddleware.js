@@ -21,7 +21,7 @@ const firebaseAuthMiddleware = (request, response, next) => {
         .auth()
         .verifyIdToken(userToken)
         .then((decodedUserToken) => {
-            console.log(decodedUserToken);
+            // console.log(decodedUserToken);
             request.user = decodedUserToken;
             return db
                 .collection("users")
