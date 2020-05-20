@@ -270,16 +270,31 @@ exports.addUserDetails = (request, response) => {
 exports.getAuthenticatedUserData = (request, response) => {
     let userData = {};
 
+    // here in this function
+    // we will be returning the data about the user
+    // USER DOCUMENT
+    // also the likes done by user to any posts
+    // FROM LIKES COLLECTION
+    // also any notifications for the user
+    // FROM THE NOTIFICATIONS COLLECTION
+
+    // we need to check if user exists
     db.doc(`/users/${request.user.username}`)
         .get()
         .then((doc) => {
             if (doc.exists) {
+                // exists
+
+                // add user data to userData object
                 userData.credentials = doc.data();
+
+                // fetch likes done by user to any post
                 return db
                     .collection("likes")
                     .where("username", "==", request.user.username)
                     .get();
             } else {
+                // does not exists
                 return response.status(404).json({
                     error: "user not found",
                 });
@@ -287,10 +302,31 @@ exports.getAuthenticatedUserData = (request, response) => {
         })
         .then((data) => {
             userData.likes = [];
+            // add all the likes to the userData object
             data.forEach((doc) => {
                 userData.likes.push(doc.data());
             });
 
+            // fetch all the notifications for the user
+            return db
+                .collection("notifications")
+                .where("recipient", "==", request.user.username)
+                .orderBy("createdAt", "desc")
+                .limit(10)
+                .get();
+        })
+        .then((data) => {
+            userData.notifications = [];
+            // add the last 10 (limit applied in above then()) 
+            // notifications to the userData object
+            data.forEach((doc) => {
+                userData.notifications.push({
+                    ...doc.data(),
+                    notificationId: doc.id,
+                });
+            });
+
+            // send user data back to client
             return response.json(userData);
         })
         .catch((err) => {
