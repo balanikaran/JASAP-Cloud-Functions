@@ -21,6 +21,8 @@ const {
     uploadImage,
     addUserDetails,
     getAuthenticatedUserData,
+    getUserDetails,
+    markNotificationsAsRead,
 } = require("./handlers/user");
 
 const { firebaseAuthMiddleware } = require("./util/firebaseAuthMiddleware");
@@ -52,6 +54,10 @@ app.post("/user/image", firebaseAuthMiddleware, uploadImage);
 app.post("/user", firebaseAuthMiddleware, addUserDetails);
 // get user details
 app.get("/user", firebaseAuthMiddleware, getAuthenticatedUserData);
+// get details for profile page using username
+app.get("/user/:username", getUserDetails);
+// mark users notifications as read
+app.post("/notifications", firebaseAuthMiddleware, markNotificationsAsRead);
 
 exports.api = functions.https.onRequest(app);
 

@@ -317,7 +317,7 @@ exports.getAuthenticatedUserData = (request, response) => {
         })
         .then((data) => {
             userData.notifications = [];
-            // add the last 10 (limit applied in above then()) 
+            // add the last 10 (limit applied in above then())
             // notifications to the userData object
             data.forEach((doc) => {
                 userData.notifications.push({
@@ -328,6 +328,77 @@ exports.getAuthenticatedUserData = (request, response) => {
 
             // send user data back to client
             return response.json(userData);
+        })
+        .catch((err) => {
+            console.error(err);
+            return response.status(500).json({
+                error: err.code,
+            });
+        });
+};
+
+exports.getUserDetails = (request, response) => {
+    let userData = {};
+
+    // here in this function we will return user data,
+    // and there posts based on the username provided
+
+    // get the user document
+    db.doc(`/users/${request.params.username}`)
+        .get()
+        .then((doc) => {
+            // check if the user exists
+            if (doc.exists) {
+                // adding user data to userData object
+                userData.user = doc.data();
+
+                // fetching the posts done by the user whose username is provided
+                return db
+                    .collection("posts")
+                    .where("username", "==", request.params.username)
+                    .orderBy("createdAt", "desc")
+                    .get();
+            } else {
+                // user does not exists
+                return response.status(404).json({
+                    error: "user not found",
+                });
+            }
+        })
+        .then((data) => {
+            userData.posts = [];
+            // adding all the posts by the user to userData object
+            data.forEach((doc) => {
+                userData.posts.push({
+                    ...doc.data(),
+                    postId: doc.id,
+                });
+            });
+
+            return response.json(userData);
+        })
+        .catch((err) => {
+            console.error(err);
+            return response.status(500).json({
+                error: err.code,
+            });
+        });
+};
+
+exports.markNotificationsAsRead = (request, response) => {
+    let batch = db.batch();
+    request.body.forEach((notificationId) => {
+        const notification = db.doc(`/notifications/${notificationId}`);
+        batch.update(notification, {
+            read: true,
+        });
+    });
+    batch
+        .commit()
+        .then(() => {
+            return response.json({
+                message: "notifications marked as read",
+            });
         })
         .catch((err) => {
             console.error(err);
