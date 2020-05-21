@@ -60,11 +60,11 @@ const validateLoginData = (user) => {
 const reduceUserDetails = (data) => {
     let userDetails = {};
 
-    if (!isEmpty(data.bio.trim())) {
+    if (data.bio && !isEmpty(data.bio.trim())) {
         userDetails.bio = data.bio;
     }
 
-    if (!isEmpty(data.website.trim())) {
+    if (data.website && !isEmpty(data.website.trim())) {
         // if the user has not added https or http
         // we will be adding http only
         // bacause http can redirect to https but not vice versa
@@ -75,7 +75,7 @@ const reduceUserDetails = (data) => {
         }
     }
 
-    if (!isEmpty(data.location.trim())) {
+    if (data.website && !isEmpty(data.location.trim())) {
         userDetails.location = data.location;
     }
 

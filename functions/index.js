@@ -7,7 +7,7 @@ const express = require("express");
 const app = express();
 
 const {
-    getPosts,
+    getAllPosts,
     createPost,
     getPost,
     addComment,
@@ -29,7 +29,7 @@ const { firebaseAuthMiddleware } = require("./util/firebaseAuthMiddleware");
 
 // -------------------- Routes for Posts Operations --------------------
 // Get posts route
-app.get("/posts", getPosts);
+app.get("/posts", getAllPosts);
 // Create new post route
 app.post("/post", firebaseAuthMiddleware, createPost);
 // get post with comments using postId
@@ -65,11 +65,15 @@ exports.createNotificationOnLike = functions.firestore
     .document("likes/{id}")
     .onCreate((snapshot) => {
         // getting the post for which notification has to be generated
-        db.doc(`/posts/${snapshot.data().postId}`)
+        return db
+            .doc(`/posts/${snapshot.data().postId}`)
             .get()
             .then((doc) => {
                 // check if the post really exists
-                if (doc.exists) {
+                if (
+                    doc.exists &&
+                    doc.data().username !== snapshot.data().username
+                ) {
                     // we can now create a new notification
                     const likeNotification = {
                         createdAt: new Date().toISOString(),
@@ -90,13 +94,8 @@ exports.createNotificationOnLike = functions.firestore
                     return;
                 }
             })
-            .then(() => {
-                // we don't need to send back anything because this is a database trigger
-                return;
-            })
             .catch((err) => {
                 console.error(err);
-                return;
             });
     });
 
@@ -104,11 +103,15 @@ exports.createNotificationOnComment = functions.firestore
     .document("comments/{id}")
     .onCreate((snapshot) => {
         // getting the post for which notification has to be generated
-        db.doc(`/posts/${snapshot.data().postId}`)
+        return db
+            .doc(`/posts/${snapshot.data().postId}`)
             .get()
             .then((doc) => {
                 // check if the post really exists
-                if (doc.exists) {
+                if (
+                    doc.exists &&
+                    doc.data().username !== snapshot.data().username
+                ) {
                     // we can now create a new notification
                     const commentNotification = {
                         createdAt: new Date().toISOString(),
@@ -129,26 +132,87 @@ exports.createNotificationOnComment = functions.firestore
                     return;
                 }
             })
-            .then(() => {
-                // we don't need to send back anything because this is a database trigger
-                return;
-            })
             .catch((err) => {
                 console.error(err);
-                return;
             });
     });
 
 exports.deleteNotificationOnUnlike = functions.firestore
     .document("likes/{id}")
     .onDelete((snapshot) => {
-        db.doc(`/notifications/${snapshot.id}`)
+        return db
+            .doc(`/notifications/${snapshot.id}`)
             .delete()
-            .then(() => {
-                return;
+            .catch((err) => {
+                console.error(err);
+            });
+    });
+
+exports.onUserImageChange = functions.firestore
+    .document("/users/{username}")
+    .onUpdate((snapshot, context) => {
+        if (
+            snapshot.before.data().imageUrl !== snapshot.after.data().imageUrl
+        ) {
+            console.log("user image has changed");
+            const batch = db.batch();
+            return db
+                .collection("posts")
+                .where("username", "==", snapshot.before.data().username)
+                .get()
+                .then((data) => {
+                    data.forEach((doc) => {
+                        const post = db.doc(`/posts/${doc.id}`);
+                        batch.update(post, {
+                            userImage: snapshot.after.data().imageUrl,
+                        });
+                    });
+                    return batch.commit();
+                });
+        } else {
+            console.log(
+                "user image has not changed, why to do the computation"
+            );
+            return null;
+        }
+    });
+
+exports.onPostDelete = functions.firestore
+    .document("/posts/{postId}")
+    .onDelete((snapshot, context) => {
+        const postId = context.params.postId;
+        const batch = db.batch();
+        return db
+            .collection("likes")
+            .where("postId", "==", postId)
+            .get()
+            .then((data) => {
+                data.forEach((doc) => {
+                    batch.delete(db.doc(`/likes/${doc.id}`));
+                });
+
+                return db
+                    .collection("comments")
+                    .where("postId", "==", postId)
+                    .get();
+            })
+            .then((data) => {
+                data.forEach((doc) => {
+                    batch.delete(db.doc(`/comments/${doc.id}`));
+                });
+
+                return db
+                    .collection("notifications")
+                    .where("postId", "==", postId)
+                    .get();
+            })
+            .then((data) => {
+                data.forEach((doc) => {
+                    batch.delete(db.doc(`/notifications/${doc.id}`));
+                });
+                return batch.commit();
             })
             .catch((err) => {
                 console.error(err);
-                return;
             });
     });

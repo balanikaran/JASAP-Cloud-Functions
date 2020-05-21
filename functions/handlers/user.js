@@ -97,7 +97,7 @@ exports.signup = (request, response) => {
             }
 
             return response.status(500).json({
-                error: err.code,
+                general: "something went wrong, try again",
             });
         });
 };
@@ -133,14 +133,20 @@ exports.login = (request, response) => {
             console.error(err);
 
             // wrong possword
-            if (err.code === "auth/wrong-password") {
-                return response.status(403).json({
-                    general: "invalid username/password, try again...",
-                });
-            }
+            // actually there is no need to check if the password is wrong,
+            // we can simply say the credentials are wrong
+            // if (err.code === "auth/wrong-password") {
+            //     return response.status(403).json({
+            //         general: "invalid username/password, try again...",
+            //     });
+            // }
 
-            return response.status(500).json({
-                error: err.code,
+            // return response.status(500).json({
+            //     error: err.code,
+            // });
+
+            return response.status(403).json({
+                general: "invalid username/password, try again",
             });
         });
 };

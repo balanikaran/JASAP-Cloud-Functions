@@ -30,7 +30,7 @@ exports.createPost = (request, response) => {
 };
 
 // handler for getting all the posts
-exports.getPosts = (request, response) => {
+exports.getAllPosts = (request, response) => {
     db.collection("posts")
         .orderBy("createdAt", "desc")
         .get()
@@ -95,7 +95,7 @@ exports.addComment = (request, response) => {
     // validate comment body
     if (request.body.body.trim() === "") {
         return response.status(400).json({
-            error: "comment cannot be empty",
+            comment: "comment cannot be empty",
         });
     }
 
