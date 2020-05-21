@@ -61,6 +61,13 @@ app.post("/notifications", firebaseAuthMiddleware, markNotificationsAsRead);
 
 exports.api = functions.https.onRequest(app);
 
+
+// -------------------- Database Triggers --------------------
+
+// this is invoked when user likes on some post
+// we are also checking here if the user has liked his own post
+// if so we do not create any notification
+// because it is dumb idea...
 exports.createNotificationOnLike = functions.firestore
     .document("likes/{id}")
     .onCreate((snapshot) => {
@@ -70,6 +77,7 @@ exports.createNotificationOnLike = functions.firestore
             .get()
             .then((doc) => {
                 // check if the post really exists
+                // and the user has not liked his own post
                 if (
                     doc.exists &&
                     doc.data().username !== snapshot.data().username
@@ -99,6 +107,10 @@ exports.createNotificationOnLike = functions.firestore
             });
     });
 
+
+// this function is invoked when user comments on some 
+// post, we also check if the user has commented on his own post
+// if so we do not create any notification for that
 exports.createNotificationOnComment = functions.firestore
     .document("comments/{id}")
     .onCreate((snapshot) => {
@@ -108,6 +120,7 @@ exports.createNotificationOnComment = functions.firestore
             .get()
             .then((doc) => {
                 // check if the post really exists
+                // also check if the user has commented on his own post
                 if (
                     doc.exists &&
                     doc.data().username !== snapshot.data().username
@@ -137,6 +150,11 @@ exports.createNotificationOnComment = functions.firestore
             });
     });
 
+
+// this is invoked when user unlikes some post
+// NOTE: here we do not have to check if the user has un-liked his own 
+// post because we never created a notification for that
+// SMART HUH! DAB...
 exports.deleteNotificationOnUnlike = functions.firestore
     .document("likes/{id}")
     .onDelete((snapshot) => {
@@ -148,19 +166,28 @@ exports.deleteNotificationOnUnlike = functions.firestore
             });
     });
 
+
+// this is invoked when user updates his profile picture
+// we need to update the user image url in all the user's posts
 exports.onUserImageChange = functions.firestore
     .document("/users/{username}")
     .onUpdate((snapshot, context) => {
+        // check if the image is really changed or not...
+        // because this function will be invoked whenever the users document
+        // is updated, so yeah, you get it...
         if (
             snapshot.before.data().imageUrl !== snapshot.after.data().imageUrl
         ) {
             console.log("user image has changed");
             const batch = db.batch();
+            // get all the posts by the user
             return db
                 .collection("posts")
                 .where("username", "==", snapshot.before.data().username)
                 .get()
                 .then((data) => {
+                    // for each user's post
+                    // we get the posts reference and update the 'userImage' property
                     data.forEach((doc) => {
                         const post = db.doc(`/posts/${doc.id}`);
                         batch.update(post, {
@@ -170,6 +197,7 @@ exports.onUserImageChange = functions.firestore
                     return batch.commit();
                 });
         } else {
+            // the user image is not changed
             console.log(
                 "user image has not changed, why to do the computation"
             );
@@ -177,39 +205,55 @@ exports.onUserImageChange = functions.firestore
         }
     });
 
+
+// this is invoked when the user deletes his own post
+// we have to delete all the 
+// LIKES, COMMENTS, and NOTIFICATIONS
+// related to that post
 exports.onPostDelete = functions.firestore
     .document("/posts/{postId}")
     .onDelete((snapshot, context) => {
+        // we get the post id from the url
+        // which can be retrived from context
         const postId = context.params.postId;
         const batch = db.batch();
+        // we get all the likes for the post which is deleted
         return db
             .collection("likes")
             .where("postId", "==", postId)
             .get()
             .then((data) => {
+                // delete the every like document for that post
                 data.forEach((doc) => {
                     batch.delete(db.doc(`/likes/${doc.id}`));
                 });
 
+                // now we get all the comments for the post which is deleted
                 return db
                     .collection("comments")
                     .where("postId", "==", postId)
                     .get();
             })
             .then((data) => {
+                // here we delete every comment document for the deleted post
                 data.forEach((doc) => {
                     batch.delete(db.doc(`/comments/${doc.id}`));
                 });
 
+                // now after likes and comments
+                // we get all the notifications created for thr deleted post
                 return db
                     .collection("notifications")
                     .where("postId", "==", postId)
                     .get();
             })
             .then((data) => {
+                // here we delete every notification document for the deleted post
                 data.forEach((doc) => {
                     batch.delete(db.doc(`/notifications/${doc.id}`));
                 });
+                // and we are finally done
+                // we commit the changes <3
                 return batch.commit();
             })
             .catch((err) => {
