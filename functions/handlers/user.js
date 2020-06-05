@@ -1,4 +1,4 @@
-const { db } = require("../util/firebaseAdmin");
+const { db, admin } = require("../util/firebaseAdmin");
 
 const firebaseConfig = require("../util/config");
 const firebase = require("firebase");
@@ -173,7 +173,7 @@ exports.uploadImage = (request, response) => {
             mimetype,
         });
 
-        if (mimetype !== "image/png" || mimetype !== "image/jpeg") {
+        if (mimetype !== "image/png" && mimetype !== "image/jpeg") {
             return response.status(400).json({
                 error: "wrong file type submitted",
             });
